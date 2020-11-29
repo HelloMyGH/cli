@@ -31,9 +31,14 @@ public class CryptomatorCli {
 
 	public static void main(String[] rawArgs) throws IOException {
 		try {
-			Args args = Args.parse(rawArgs);
-			validate(args);
-			startup(args);
+			if (rawArgs.length==1 && rawArgs[0].equals("--version")) {
+
+				new CryptomatorCli().printVersion();
+			}else{
+				Args args = Args.parse(rawArgs);
+				validate(args);
+				startup(args);
+			}
 		} catch (ParseException e) {
 			LOG.error("Invalid or missing arguments", e);
 			Args.printUsage();
@@ -124,5 +129,9 @@ public class CryptomatorCli {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void printVersion() {
+		System.out.println(this.getClass().getPackage().getImplementationVersion());
 	}
 }
