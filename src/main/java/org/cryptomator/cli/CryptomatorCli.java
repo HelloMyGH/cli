@@ -90,25 +90,26 @@ public class CryptomatorCli {
 				FuseMount newMount = new FuseMount(vaultRoot, fuseMountPoint, mountFlags);
 				if (newMount.mount()) {
 					mounts.add(newMount);
+					server.ifPresent(serv -> serv.addServlet(vaultRoot, vaultName));
 				}
 			}
-
-			server.ifPresent(serv -> serv.addServlet(vaultRoot, vaultName));
 		}
 
-		waitForShutdown(() -> {
-			LOG.info("Shutting down...");
-			try {
-				server.ifPresent(serv -> serv.stop());
+		if (mounts.size() > 0 ) {
+			waitForShutdown(() -> {
+				LOG.info("Shutting down...");
+				try {
+					server.ifPresent(serv -> serv.stop());
 
-				for (FuseMount mount : mounts) {
-					mount.unmount();
+					for (FuseMount mount : mounts) {
+						mount.unmount();
+					}
+					LOG.info("Shutdown successful.");
+				} catch (Throwable e) {
+					LOG.error("Error during shutdown", e);
 				}
-				LOG.info("Shutdown successful.");
-			} catch (Throwable e) {
-				LOG.error("Error during shutdown", e);
-			}
-		});
+			});
+		}
 	}
 
 	private static Optional<WebDav> initWebDavServer(Args args) {
