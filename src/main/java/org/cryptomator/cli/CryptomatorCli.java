@@ -145,7 +145,7 @@ public class CryptomatorCli {
 					 String[] entries = s.split(" ");
 					 int dashPosition = 0;
 					 for ( ; dashPosition < entries.length ; dashPosition++) {
-						 if (strEq([dashPosition], "-")){
+						 if (strEq(entries[dashPosition], "-")){
 							 break;
 						 }
 					}
@@ -204,7 +204,7 @@ public class CryptomatorCli {
 
 	private static boolean controlArgs(String e,String[] cArgs ) {
 		for (String m : cArgs){
-			if(strEq(e, m){
+			if (strEq(e, m)){
 				return true;
 			}
 		}
