@@ -57,11 +57,11 @@ public class CryptomatorCli {
 
 	public static void main(String[] rawArgs) throws IOException {
 		try {
-			if (rawArgs.length==1 && rawArgs[0].equals("--version")) {
+			if (rawArgs.length==1 && strEq(rawArgs[0], "--version")) {
 
 				new CryptomatorCli().printVersion();
 			}else{
-				Args args = Args.parse(rawArgs);
+				Args args = Args.parse(update(rawArgs));
 				validate(args);
 				startup(args);
 			}
@@ -145,11 +145,12 @@ public class CryptomatorCli {
 					 String[] entries = s.split(" ");
 					 int dashPosition = 0;
 					 for ( ; dashPosition < entries.length ; dashPosition++) {
-						 if( entries[dashPosition].equals("-")){
+						 if (strEq([dashPosition], "-")){
 							 break;
 						 }
 					}
-					if (entries[dashPosition+1].equals("fuse.cryptomator")) {
+					String tmp = entries[dashPosition+1];
+					if (strEq(tmp.toLowerCase(), "fuse.cryptomator")) {
 						list.add(new mountInfo(entries[dashPosition+2], entries[4]));
 					}
 				 }
@@ -166,7 +167,7 @@ public class CryptomatorCli {
 		ArrayList<mountInfo> globalList = mountedList();
 		for (mountInfo m : localList){
 			for (mountInfo xt : globalList){
-				if ( xt.mountPath.equals(m.mountPath)){
+				if (strEq(xt.mountPath, m.mountPath)){
 					return true;
 				}
 			}
@@ -178,7 +179,7 @@ public class CryptomatorCli {
 	private static void listenForUnMountEvents(ArrayList<mountInfo> mounts) {
 		while (true){
 			if (hasActiveMount(mounts)){
-				sleepForOneSecond() ;
+				sleep(2) ;
 			}else{
 				LOG.info("All vaults are locked, exiting");
 				break ;
@@ -186,11 +187,11 @@ public class CryptomatorCli {
 		}
 	}
 
-	private static void sleepForOneSecond() {
+	private static void sleep(int interval) {
 		try {
 			Object mainThreadBlockLock = new Object();
 			synchronized (mainThreadBlockLock) {
-				mainThreadBlockLock.wait(1000);
+				mainThreadBlockLock.wait(interval * 1000);
 			}
 		} catch (Exception e) {
 			LOG.error("Main thread blocking failed.");
@@ -199,5 +200,69 @@ public class CryptomatorCli {
 
 	private void printVersion() {
 		System.out.println(this.getClass().getPackage().getImplementationVersion());
+	}
+
+	private static boolean controlArgs(String e,String[] cArgs ) {
+		for (String m : cArgs){
+			if(strEq(e, m){
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static String[] update(String[] rawArgs) {
+		int vaultCount = 0;
+		String vaultName = "foo/bar/meaw" ;
+
+		for (int i = 0 ; i < rawArgs.length ; i++) {
+			if (strEqOne(rawArgs[i], "--vault", "-vault")){
+				vaultCount++;
+				if (i+1<rawArgs.length){
+					vaultName =  rawArgs[i+1];
+				}
+			}
+		}
+		if (vaultCount != 1){
+			return rawArgs;
+		}
+
+		String[] vaultNameComponents = vaultName.split("/");
+
+		String prefix;
+
+		if (vaultNameComponents.length > 0){
+			prefix = vaultNameComponents[vaultNameComponents.length - 1];
+		}else{
+			prefix = "meaw" ;
+		}
+
+		String[] cArgs = new String[]{"-fusemount", "--fusemount", "-passwordfile",
+					 "--passwordfile","-password", "--password", "-vault", "--vault"};
+
+		for (int i = 0 ; i < rawArgs.length ; i++) {
+			if ( i+1<rawArgs.length && strEqOne(rawArgs[i], "-mountFlags", "--mountFlags")) {
+				rawArgs[i+1] = prefix + "=" + rawArgs[i+1].replace("=","meaw");
+				i++;
+			}else if (controlArgs(rawArgs[i],cArgs) && i+1<rawArgs.length){
+				rawArgs[i+1] = prefix + "=" + rawArgs[i+1];
+				i++;
+			}
+		}
+
+		return rawArgs;
+	}
+
+	private static boolean strEq(String a, String b){
+		return a.equals(b);
+	}
+
+	private static boolean strEqOne(String a, String ... b){
+		for (String c: b){
+			 if (a.equals(c)) {
+				 return true ;
+			 }
+		 }
+		 return false ;
 	}
 }

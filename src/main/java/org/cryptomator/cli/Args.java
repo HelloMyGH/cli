@@ -91,6 +91,11 @@ public class Args {
 				.desc("Prints version information") //
 				.hasArg(false) //
 				.build());
+		OPTIONS.addOption(Option.builder() //
+				.longOpt("foreground") //
+				.desc("Causes the process to run in the foreground, the process will run daemonized if the option is not given(not supported)") //
+				.hasArg(false) //
+				.build());
 	}
 
 	private final String bindAddr;

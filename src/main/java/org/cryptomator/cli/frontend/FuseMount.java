@@ -41,7 +41,9 @@ public class FuseMount {
 			if (mountFlags != null) {
 				ArrayList<String> defaultMountFlags = new ArrayList<String>(Arrays.asList(mounter.defaultMountFlags()));
 				for (String it : mountFlags.split(",")) {
-					defaultMountFlags.add("-o"+it.replace(' ','='));
+					String m = it.replace(' ','=');
+					m = m.replace("meaw","=");
+					defaultMountFlags.add("-o"+m);
 				}
 				String[] newMountFlags = defaultMountFlags.toArray(new String[defaultMountFlags.size()]);
 				envVars = EnvironmentVariables.create().withFlags(newMountFlags)
