@@ -53,6 +53,8 @@ public class FuseMount {
 
 			mnt = mounter.mount(vaultRoot, envVars);
 			LOG.info("Mounted to {}", mountPoint);
+			LOG.info("Run fusermount -u \"{}\" to unmount", mountPoint);
+
 		} catch (CommandFailedException e) {
 			LOG.error("Can't mount: {}, error: {}", mountPoint, e.getMessage());
 			return false;

@@ -86,6 +86,11 @@ public class Args {
 				.valueSeparator() //
 				.hasArgs() //
 				.build());
+		OPTIONS.addOption(Option.builder() //
+				.longOpt("version") //
+				.desc("Prints version information") //
+				.hasArg(false) //
+				.build());
 	}
 
 	private final String bindAddr;

@@ -11,6 +11,8 @@ package org.cryptomator.cli;
 import org.cryptomator.cli.frontend.FuseMount;
 import org.cryptomator.cli.frontend.WebDav;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,6 +26,15 @@ import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+class mountInfo{
+	mountInfo(String vp,String mp) {
+		this.vaultPath = vp;
+		this.mountPath = mp;
+	}
+	public final String vaultPath;
+	public final String mountPath;
+}
 
 public class CryptomatorCli {
 
@@ -75,7 +86,7 @@ public class CryptomatorCli {
 	private static void startup(Args args) throws IOException {
 		Optional<WebDav> server = initWebDavServer(args);
 		ArrayList<FuseMount> mounts = new ArrayList<>();
-
+		ArrayList<mountInfo> mInfo = new ArrayList<>();
 		for (String vaultName : args.getVaultNames()) {
 			Path vaultPath = Paths.get(args.getVaultPath(vaultName));
 			LOG.info("Unlocking vault \"{}\" located at {}", vaultName, vaultPath);
@@ -90,26 +101,13 @@ public class CryptomatorCli {
 				FuseMount newMount = new FuseMount(vaultRoot, fuseMountPoint, mountFlags);
 				if (newMount.mount()) {
 					mounts.add(newMount);
+					mInfo.add(new mountInfo(vaultPath.toString(), fuseMountPoint.toString()));
 					server.ifPresent(serv -> serv.addServlet(vaultRoot, vaultName));
 				}
 			}
 		}
 
-		if (mounts.size() > 0 ) {
-			waitForShutdown(() -> {
-				LOG.info("Shutting down...");
-				try {
-					server.ifPresent(serv -> serv.stop());
-
-					for (FuseMount mount : mounts) {
-						mount.unmount();
-					}
-					LOG.info("Shutdown successful.");
-				} catch (Throwable e) {
-					LOG.error("Error during shutdown", e);
-				}
-			});
-		}
+		listenForUnMountEvents(mInfo);
 	}
 
 	private static Optional<WebDav> initWebDavServer(Args args) {
@@ -120,15 +118,67 @@ public class CryptomatorCli {
 		return server;
 	}
 
-	private static void waitForShutdown(Runnable runnable) {
-		Runtime.getRuntime().addShutdownHook(new Thread(runnable));
-		LOG.info("Press Ctrl+C to terminate.");
+	private static ArrayList<mountInfo> mountedList() {
+		ArrayList<mountInfo> list = new ArrayList<>() ;
 		try {
-			while (true) {
-				System.in.read();
+			 BufferedReader in  = new BufferedReader(new FileReader("/proc/self/mountinfo"));
+			 while (true){
+				 String s = in.readLine();
+				 if (s==null){
+					 break;
+				 }else{
+					 String[] entries = s.split(" ");
+					 int dashPosition = 0;
+					 for ( ; dashPosition < entries.length ; dashPosition++) {
+						 if( entries[dashPosition].equals("-")){
+							 break;
+						 }
+					}
+					if (entries[dashPosition+1].equals("fuse.cryptomator")) {
+						list.add(new mountInfo(entries[dashPosition+2], entries[4]));
+					}
+				 }
+			 }
+		 } catch (java.io.FileNotFoundException e){
+			LOG.error(e.getMessage());
+		 } catch (IOException e){
+			LOG.error(e.getMessage());
+		 }
+		 return list;
+	}
+
+	private static boolean hasActiveMount(ArrayList<mountInfo> localList) {
+		ArrayList<mountInfo> globalList = mountedList();
+		for (mountInfo m : localList){
+			for (mountInfo xt : globalList){
+				if ( xt.mountPath.equals(m.mountPath)){
+					return true;
+				}
 			}
-		} catch (IOException e) {
-			e.printStackTrace();
+		}
+
+		return false ;
+	}
+
+	private static void listenForUnMountEvents(ArrayList<mountInfo> mounts) {
+		while (true){
+			if (hasActiveMount(mounts)){
+				sleepForOneSecond() ;
+			}else{
+				LOG.info("All vaults are locked, exiting");
+				break ;
+			}
+		}
+	}
+
+	private static void sleepForOneSecond() {
+		try {
+			Object mainThreadBlockLock = new Object();
+			synchronized (mainThreadBlockLock) {
+				mainThreadBlockLock.wait(1000);
+			}
+		} catch (Exception e) {
+			LOG.error("Main thread blocking failed.");
 		}
 	}
 
