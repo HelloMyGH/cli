@@ -29,8 +29,23 @@ import org.slf4j.LoggerFactory;
 
 class mountInfo{
 	mountInfo(String vp,String mp) {
-		this.vaultPath = vp;
-		this.mountPath = mp;
+		this.vaultPath = decode(vp);
+		this.mountPath = decode(mp);
+	}
+	private String decode(String s) {
+		String m = null;
+		try{
+			m = s.replace("\\012","\n");
+			m = m.replace("\\040"," " );
+			m = m.replace("\\134","\\" );
+			m = m.replace("\\011","\\t" );
+		} catch(java.lang.NullPointerException e){}
+
+		if (m==null){
+			return s;
+		}else{
+			return m;
+		}
 	}
 	public final String vaultPath;
 	public final String mountPath;
