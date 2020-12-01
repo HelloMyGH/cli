@@ -14,4 +14,5 @@ This project is a fork of https://github.com/cryptomator/cli and currently, it a
      unmount if it is. The SIGTERM approach just nukes the process even when mount points are in use and this may
      lead to data loss.
 5. A saner API when unlocking a single vault and the example is:
-    ```/usr/bin/java -jar cryptomator-cli.jar --vault $VAULT_PATH --fusemount $MOUNT_PATH --mountFlags rw,fsname=Cryptomator@$VAULT_PATH,subtype=Cryptomator```
+
+```java -jar cryptomator-cli.jar --vault $VAULT_PATH --fusemount $MOUNT_PATH --mountFlags $FUSE_OPTIONS```
