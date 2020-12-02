@@ -134,7 +134,7 @@ public class CryptomatorCli {
 	}
 
 	private static ArrayList<mountInfo> mountedList() {
-		ArrayList<mountInfo> list = new ArrayList<>() ;
+		ArrayList<mountInfo> list = new ArrayList<>();
 		try {
 			 BufferedReader in  = new BufferedReader(new FileReader("/proc/self/mountinfo"));
 			 while (true){
@@ -173,16 +173,16 @@ public class CryptomatorCli {
 			}
 		}
 
-		return false ;
+		return false;
 	}
 
 	private static void listenForUnMountEvents(ArrayList<mountInfo> mounts) {
 		while (true){
 			if (hasActiveMount(mounts)){
-				sleep(2) ;
+				sleep(2);
 			}else{
 				LOG.info("All vaults are locked, exiting");
-				break ;
+				break;
 			}
 		}
 	}
@@ -213,7 +213,7 @@ public class CryptomatorCli {
 
 	private static String[] update(String[] rawArgs) {
 		int vaultCount = 0;
-		String vaultName = "foo/bar/meaw" ;
+		String vaultName = "foo/bar/meaw";
 
 		for (int i = 0 ; i < rawArgs.length ; i++) {
 			if (strEqOne(rawArgs[i], "--vault", "-vault")){
@@ -234,7 +234,7 @@ public class CryptomatorCli {
 		if (vaultNameComponents.length > 0){
 			prefix = vaultNameComponents[vaultNameComponents.length - 1];
 		}else{
-			prefix = "meaw" ;
+			prefix = "meaw";
 		}
 
 		String[] cArgs = new String[]{"-fusemount", "--fusemount", "-passwordfile",
@@ -242,7 +242,7 @@ public class CryptomatorCli {
 
 		for (int i = 0 ; i < rawArgs.length ; i++) {
 			if ( i+1<rawArgs.length && strEqOne(rawArgs[i], "-mountFlags", "--mountFlags")) {
-				rawArgs[i+1] = prefix + "=" + rawArgs[i+1].replace("=","meaw");
+				rawArgs[i+1] = prefix + "=" + rawArgs[i+1].replace("=", FuseMount.encodeCharacterToString('='));
 				i++;
 			}else if (controlArgs(rawArgs[i],cArgs) && i+1<rawArgs.length){
 				rawArgs[i+1] = prefix + "=" + rawArgs[i+1];
@@ -260,9 +260,9 @@ public class CryptomatorCli {
 	private static boolean strEqOne(String a, String ... b){
 		for (String c: b){
 			 if (a.equals(c)) {
-				 return true ;
+				 return true;
 			 }
 		 }
-		 return false ;
+		 return false;
 	}
 }

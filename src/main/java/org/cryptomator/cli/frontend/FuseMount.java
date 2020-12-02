@@ -20,6 +20,10 @@ public class FuseMount {
 	private Mount mnt;
 	private String mountFlags;
 
+	public static String encodeCharacterToString(char c) {
+		return "1234!Xz7yT_%^%$*";
+	}
+
 	public FuseMount(Path vaultRoot, Path mountPoint, String mountFlags) {
 		this.vaultRoot = vaultRoot;
 		this.mountPoint = mountPoint;
@@ -42,7 +46,7 @@ public class FuseMount {
 				ArrayList<String> defaultMountFlags = new ArrayList<String>(Arrays.asList(mounter.defaultMountFlags()));
 				for (String it : mountFlags.split(",")) {
 					String m = it.replace(' ','=');
-					m = m.replace("meaw","=");
+					m = m.replace(encodeCharacterToString('='), "=");
 					defaultMountFlags.add("-o"+m);
 				}
 				String[] newMountFlags = defaultMountFlags.toArray(new String[defaultMountFlags.size()]);
