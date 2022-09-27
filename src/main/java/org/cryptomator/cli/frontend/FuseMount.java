@@ -4,8 +4,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.ArrayList;
 
-import org.cryptomator.frontend.fuse.mount.CommandFailedException;
 import org.cryptomator.frontend.fuse.mount.EnvironmentVariables;
+import org.cryptomator.frontend.fuse.mount.FuseMountException;
 import org.cryptomator.frontend.fuse.mount.FuseMountFactory;
 import org.cryptomator.frontend.fuse.mount.Mount;
 import org.cryptomator.frontend.fuse.mount.Mounter;
@@ -40,28 +40,32 @@ public class FuseMount {
 		try {
 			Mounter mounter = FuseMountFactory.getMounter();
 
-			EnvironmentVariables envVars ;
-
+			String[] parsedMountFlags;
 			if (mountFlags != null) {
-				ArrayList<String> defaultMountFlags = new ArrayList<String>(Arrays.asList(mounter.defaultMountFlags()));
+				ArrayList<String> defaultMountFlags = new ArrayList(Arrays.asList(mounter.defaultMountFlags()));
 				for (String it : mountFlags.split(",")) {
-					String m = it.replace(' ','=');
-					m = m.replace(encodeCharacterToString('='), "=");
-					defaultMountFlags.add("-o"+m);
+					defaultMountFlags.add(
+							"-o"+it
+							.replace(' ','=')
+							.replace(encodeCharacterToString('='), "=")
+					);
 				}
-				String[] newMountFlags = defaultMountFlags.toArray(new String[defaultMountFlags.size()]);
-				envVars = EnvironmentVariables.create().withFlags(newMountFlags)
-							.withMountPoint(mountPoint).build();
+				parsedMountFlags = defaultMountFlags.toArray(new String[defaultMountFlags.size()]);
 			}else{
-				envVars = EnvironmentVariables.create().withFlags(mounter.defaultMountFlags())
-							.withMountPoint(mountPoint).build();
+				parsedMountFlags = mounter.defaultMountFlags();
 			}
+
+			EnvironmentVariables envVars = EnvironmentVariables.create() //
+					.withFlags(parsedMountFlags) //
+					.withFileNameTranscoder(mounter.defaultFileNameTranscoder()) //
+					.withMountPoint(mountPoint).build();
+
 
 			mnt = mounter.mount(vaultRoot, envVars);
 			LOG.info("Mounted to {}", mountPoint);
 			LOG.info("Run fusermount -u \"{}\" to unmount", mountPoint);
 
-		} catch (CommandFailedException e) {
+		} catch (FuseMountException e) {
 			LOG.error("Can't mount: {}, error: {}", mountPoint, e.getMessage());
 			return false;
 		}
@@ -72,7 +76,7 @@ public class FuseMount {
 		try {
 			mnt.unmount();
 			LOG.info("Unmounted {}", mountPoint);
-		} catch (CommandFailedException e) {
+		} catch (FuseMountException e) {
 			LOG.error("Can't unmount gracefully: {}. Force unmount.", e.getMessage());
 			forceUnmount();
 		}
@@ -82,7 +86,7 @@ public class FuseMount {
 		try {
 			mnt.unmountForced();
 			LOG.info("Unmounted {}", mountPoint);
-		} catch (CommandFailedException e) {
+		} catch (FuseMountException e) {
 			LOG.error("Force unmount failed: {}", e.getMessage());
 		}
 	}

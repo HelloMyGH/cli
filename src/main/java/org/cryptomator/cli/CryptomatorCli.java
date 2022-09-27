@@ -17,13 +17,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Set;
 
+import com.google.common.base.Preconditions;
 import org.apache.commons.cli.ParseException;
 import org.cryptomator.cryptofs.CryptoFileSystemProperties;
 import org.cryptomator.cryptofs.CryptoFileSystemProvider;
+import org.cryptomator.cryptolib.common.MasterkeyFileAccess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +58,9 @@ class mountInfo{
 public class CryptomatorCli {
 
 	private static final Logger LOG = LoggerFactory.getLogger(CryptomatorCli.class);
+
+	private static final byte[] PEPPER = new byte[0];
+	private static final String SCHEME = "masterkeyfile";
 
 	public static void main(String[] rawArgs) throws IOException {
 		try {
@@ -102,12 +109,27 @@ public class CryptomatorCli {
 		Optional<WebDav> server = initWebDavServer(args);
 		ArrayList<FuseMount> mounts = new ArrayList<>();
 		ArrayList<mountInfo> mInfo = new ArrayList<>();
+
+		SecureRandom secureRandom;
+		try {
+			secureRandom = SecureRandom.getInstanceStrong();
+		} catch (NoSuchAlgorithmException e) {
+			throw new IllegalStateException("A strong algorithm must exist in every Java platform.", e);
+		}
+		MasterkeyFileAccess masterkeyFileAccess = new MasterkeyFileAccess(PEPPER, secureRandom);
+
 		for (String vaultName : args.getVaultNames()) {
 			Path vaultPath = Paths.get(args.getVaultPath(vaultName));
 			LOG.info("Unlocking vault \"{}\" located at {}", vaultName, vaultPath);
 			String vaultPassword = args.getPasswordStrategy(vaultName).password();
 			CryptoFileSystemProperties properties = CryptoFileSystemProperties.cryptoFileSystemProperties()
-					.withPassphrase(vaultPassword).build();
+					.withKeyLoader(keyId -> {
+						Preconditions.checkArgument(SCHEME.equalsIgnoreCase(keyId.getScheme()), "Only supports keys with scheme " + SCHEME);
+						Path keyFilePath = vaultPath.resolve(keyId.getSchemeSpecificPart());
+						return masterkeyFileAccess.load(keyFilePath, vaultPassword);
+					})
+					.build();
+
 			Path vaultRoot = CryptoFileSystemProvider.newFileSystem(vaultPath, properties).getPath("/");
 
 			Path fuseMountPoint = args.getFuseMountPoint(vaultName);
@@ -177,13 +199,31 @@ public class CryptomatorCli {
 	}
 
 	private static void listenForUnMountEvents(ArrayList<mountInfo> mounts) {
-		while (true){
-			if (hasActiveMount(mounts)){
+		while (true) {
+			if (hasActiveMount(mounts)) {
 				sleep(2);
-			}else{
+			} else {
 				LOG.info("All vaults are locked, exiting");
 				break;
 			}
+		}
+	}
+
+	private static void waitForShutdown(Runnable runnable) {
+		Runtime.getRuntime().addShutdownHook(new Thread(runnable));
+		LOG.info("Press Ctrl+C to terminate.");
+
+		// Block the main thread infinitely as otherwise when using
+		// Fuse mounts the application quits immediately.
+		try {
+			Object mainThreadBlockLock = new Object();
+			synchronized (mainThreadBlockLock) {
+				while (true) {
+					mainThreadBlockLock.wait();
+				}
+			}
+		} catch (Exception e) {
+			LOG.error("Main thread blocking failed.");
 		}
 	}
 
