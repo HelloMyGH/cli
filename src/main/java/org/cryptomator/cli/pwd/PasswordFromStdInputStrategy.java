@@ -7,6 +7,7 @@ import java.io.BufferedReader;
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public class PasswordFromStdInputStrategy implements PasswordStrategy {
     private static final Logger LOG = LoggerFactory.getLogger(PasswordFromStdInputStrategy.class);
@@ -27,10 +28,9 @@ public class PasswordFromStdInputStrategy implements PasswordStrategy {
         if (console == null) {
             LOG.warn("No console: non-interactive mode, instead use insecure replacement, PW is shown!");
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-            System.out.println(String.format(inputMessage, vaultName));
-
             try {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in, StandardCharsets.UTF_8));
+                System.out.println(String.format(inputMessage, vaultName));
                 password = reader.readLine();
             } catch (IOException e) {
                 LOG.error("There was an error reading line from console.");
