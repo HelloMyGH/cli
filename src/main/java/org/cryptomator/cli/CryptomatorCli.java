@@ -144,7 +144,19 @@ public class CryptomatorCli {
 			}
 		}
 
-		listenForUnMountEvents(mInfo);
+		waitForShutdown(() -> {
+			LOG.info("Shutting down...");
+			try {
+				server.ifPresent(WebDav::stop);
+
+				for (FuseMount mount : mounts) {
+					mount.unmount();
+				}
+				LOG.info("Shutdown successful.");
+			} catch (Throwable e) {
+				LOG.error("Error during shutdown", e);
+			}
+		}, mInfo);
 	}
 
 	private static Optional<WebDav> initWebDavServer(Args args) {
@@ -198,43 +210,26 @@ public class CryptomatorCli {
 		return false;
 	}
 
-	private static void listenForUnMountEvents(ArrayList<mountInfo> mounts) {
-		while (true) {
-			if (hasActiveMount(mounts)) {
-				sleep(2);
-			} else {
-				LOG.info("All vaults are locked, exiting");
-				break;
-			}
-		}
-	}
-
-	private static void waitForShutdown(Runnable runnable) {
+	private static void waitForShutdown(Runnable runnable, ArrayList<mountInfo> mounts) {
 		Runtime.getRuntime().addShutdownHook(new Thread(runnable));
 		LOG.info("Press Ctrl+C to terminate.");
 
-		// Block the main thread infinitely as otherwise when using
+		// Block the main thread as long as we have active mounts or otherwise when using
 		// Fuse mounts the application quits immediately.
 		try {
-			Object mainThreadBlockLock = new Object();
-			synchronized (mainThreadBlockLock) {
-				while (true) {
-					mainThreadBlockLock.wait();
-				}
+			while (hasActiveMount(mounts)) {
+				sleep(2);
 			}
+			LOG.info("All vaults are locked, exiting");
 		} catch (Exception e) {
-			LOG.error("Main thread blocking failed.");
+			LOG.info("Main thread blocking failed, exiting");
 		}
 	}
 
-	private static void sleep(int interval) {
-		try {
-			Object mainThreadBlockLock = new Object();
-			synchronized (mainThreadBlockLock) {
-				mainThreadBlockLock.wait(interval * 1000);
-			}
-		} catch (Exception e) {
-			LOG.error("Main thread blocking failed.");
+	private static void sleep(long interval) throws InterruptedException {
+		Object mainThreadBlockLock = new Object();
+		synchronized (mainThreadBlockLock) {
+			mainThreadBlockLock.wait(interval * 1000);
 		}
 	}
 
