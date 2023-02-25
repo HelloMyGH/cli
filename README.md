@@ -6,7 +6,7 @@ like "/usr/bin" or "/usr/local/bin".
 This project is a fork of https://github.com/cryptomator/cli and currently, it adds the following functionality:-
 
 1. ```--version``` argument to print version information.
-2. ```--mountFlags``` argument to add FUSE options..
+2. ```--mountFlags``` argument to add FUSE options.
 3. ```--foreground``` argument to cause the program to run in the foreground.
     Not adding the feature causes the program to run daemonized(currently not supported).
 4. A preffered way to lock a vault is by using ```fusermount -u $MOUNT_PATH``` and not sending SIGTERM signal.
